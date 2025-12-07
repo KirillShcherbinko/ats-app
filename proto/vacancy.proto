@@ -1,0 +1,158 @@
+// proto/vacancy.proto
+syntax = "proto3";
+
+package vacancy;
+
+import "common.proto";
+
+service VacancyService {
+  rpc GetVacancies (GetVacanciesRequest) returns (GetVacanciesResponse);
+  rpc GetVacancy (common.Id) returns (Vacancy);
+  rpc CreateVacancy (CreateVacancyRequest) returns (Vacancy);
+  rpc UpdateVacancy (UpdateVacancyRequest) returns (Vacancy);
+  rpc DeleteVacancy (common.Id) returns (common.Empty);
+
+  // Этапы вакансии
+  rpc GetVacancyStages (GetVacancyStagesRequest) returns (GetVacancyStagesResponse);
+  rpc GetVacancyStage (common.Id) returns (Stage);
+  rpc CreateVacancyStage (CreateStageRequest) returns (Stage);
+  rpc UpdateVacancyStage (UpdateStageRequest) returns (Stage);
+  rpc DeleteVacancyStage (common.Id) returns (common.Empty);
+
+  // Этапы кандидата
+  rpc GetCandidateStages (GetCandidateStagesRequest) returns (GetCandidateStagesResponse);
+  rpc GetCandidateStage (common.Id) returns (CandidateStage);
+  rpc CreateCandidateStage (CreateCandidateStageRequest) returns (CandidateStage);
+  rpc UpdateCandidateStage (UpdateCandidateStageRequest) returns (CandidateStage);
+  rpc DeleteCandidateStage (common.Id) returns (common.Empty);
+
+  // История этапов кандидата
+  rpc GetStageHistory (GetStageHistoryRequest) returns (GetStageHistoryResponse);
+  rpc AddStageHistory (AddStageHistoryRequest) returns (StageHistoryRecord);
+}
+
+// Вакансии (vacancies)
+message GetVacanciesRequest {
+  int32 limit = 1;
+  int32 page = 2;
+  optional string status = 3;
+  optional string recruiter_id = 4;
+  optional string search_query = 5;
+}
+
+message GetVacanciesResponse {
+  repeated Vacancy vacancies = 1;
+  common.PaginationResponse page = 2;
+}
+
+message Vacancy {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string status = 4;
+  string recruiter_id = 5;
+  int64 created_at = 6;
+}
+
+message CreateVacancyRequest {
+  string title = 1;
+  string description = 2;
+  optional string status = 3;
+  string recruiter_id = 4;
+}
+
+message UpdateVacancyRequest {
+  optional string title = 1;
+  optional string description = 2;
+  optional string status = 3;
+  optional string recruiter_id = 4;
+}
+
+// Этапы вакансии (stages)
+message GetVacancyStagesRequest {
+  string vacancy_id = 1;
+  int32 limit = 2;
+  int32 page = 3;
+}
+
+message GetVacancyStagesResponse {
+  repeated Stage stages = 1;
+  common.PaginationResponse page = 2;
+}
+
+message Stage {
+  string id = 1;
+  string vacancy_id = 2;
+  string title = 3;
+}
+
+message CreateStageRequest {
+  string vacancy_id = 1;
+  string title = 2;
+}
+
+message UpdateStageRequest {
+  optional string title = 1;
+}
+
+// Этапы кандидата (candidate_stages)
+message GetCandidateStagesRequest {
+  optional string vacancy_id = 1;
+  optional string candidate_id = 2;
+  optional string stage_id = 3;
+  int32 limit = 4;
+  int32 page = 5;
+}
+
+message GetCandidateStagesResponse {
+  repeated CandidateStage candidate_stages = 1;
+  common.PaginationResponse page = 2;
+}
+
+message CandidateStage {
+  string id = 1;
+  string vacancy_id = 2;
+  string stage_id = 3;
+  string candidate_id = 4;
+  string status = 5;
+  int64 updated_at = 6;
+}
+
+message CreateCandidateStageRequest {
+  string vacancy_id = 1;
+  string stage_id = 2;
+  string candidate_id = 3;
+  optional string status = 4;
+}
+
+message UpdateCandidateStageRequest {
+  optional string status = 1;
+}
+
+// История этапов (stage_history)
+message GetStageHistoryRequest {
+  string candidate_stages_id = 1;
+  int32 limit = 2;
+  int32 page = 3;
+}
+
+message GetStageHistoryResponse {
+  repeated StageHistoryRecord records = 1;
+  common.PaginationResponse page = 2;
+}
+
+message StageHistoryRecord {
+  string id = 1;
+  string candidate_stages_id = 2;
+  optional string from_stage_id = 3;
+  optional string to_stage_id = 4;
+  int64 changed_at = 5;
+  string user_id = 6;
+}
+
+message AddStageHistoryRequest {
+  string candidate_stages_id = 1;
+  optional string from_stage_id = 2;
+  optional string to_stage_id = 3;
+  string user_id = 4;
+}

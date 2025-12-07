@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package file;
+
+// Сервис для работы с файлами
+service FileService {
+  // Загрузка файла: клиент отправляет поток байтов, сервер парсит и сохраняет в S3
+  rpc UploadFile(stream UploadRequest) returns (UploadResponse);
+  
+  // Получение информации о файле
+  rpc GetFileInfo(FileId) returns (FileInfo);
+}
+
+// Запрос на загрузку - только чистые байты
+message UploadRequest {
+  bytes chunk = 1; // Чистые байты файла
+}
+
+// Ответ после полной обработки на сервере
+message UploadResponse {
+  string file_id = 1;      // Уникальный ID файла
+  string filename = 2;     // Оригинальное имя (если определено)
+  string mimetype = 3;     // MIME-тип (определен сервером)
+  uint64 size = 4;         // Размер в байтах
+  string sha256 = 5;       // Хеш для проверки целостности
+  string s3_url = 6;       // S3 URL файла
+  string message = 7;      // Статусное сообщение
+  string timestamp = 8;    // Время загрузки
+}
+
+// Запрос по ID файла
+message FileId {
+  string file_id = 1;
+}
+
+// Информация о файле
+message FileInfo {
+  string file_id = 1;
+  string filename = 2;
+  string mimetype = 3;
+  uint64 size = 4;
+  string sha256 = 5;
+  string s3_url = 6;
+  string upload_time = 7;
+  string s3_etag = 8;     // ETag из S3
+  string s3_version_id = 9; // Version ID (если версионирование включено)
+}

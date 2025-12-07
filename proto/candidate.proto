@@ -1,0 +1,134 @@
+// proto/candidate.proto
+syntax = "proto3";
+
+package candidate;
+
+import "common.proto";
+import "google/protobuf/field_mask.proto";
+
+service CandidateService {
+  rpc GetCandidates (GetCandidatesRequest) returns (GetCandidatesResponse);
+  rpc GetCandidate (common.Id) returns (Candidate);
+  rpc CreateCandidate (CreateCandidateRequest) returns (Candidate);
+  rpc UpdateCandidate (UpdateCandidateRequest) returns (Candidate);
+  rpc DeleteCandidate (common.Id) returns (common.Empty);
+
+  rpc GetCandidateNotes (GetCandidateNotesRequest) returns (GetCandidateNotesResponse);
+  rpc GetCandidateNote (common.Id) returns (Note);
+  rpc CreateCandidateNote (CreateCandidateNoteRequest) returns (Note);
+  rpc UpdateCandidateNote (UpdateCandidateNoteRequest) returns (Note);
+  rpc DeleteCandidateNote (common.Id) returns (common.Empty);
+
+  rpc GetCandidateHistory (GetCandidateHistoryRequest) returns (GetCandidateHistoryResponse);
+  rpc AddCandidateHistory (AddCandidateHistoryRequest) returns (HistoryRecord);
+}
+
+// Сообщения для кандидатов
+message GetCandidatesRequest {
+  int32 limit = 1;
+  int32 page = 2;
+  optional string status = 3;
+  optional string search_query = 4;
+}
+
+message GetCandidatesResponse {
+  repeated Candidate candidates = 1;
+  common.PaginationResponse page = 2;
+}
+
+message Candidate {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  optional string patronymic = 4;
+  string email = 5;
+  string phone_number = 6;
+  repeated string skills = 7;
+  string status = 8;
+  optional string photo_url = 9;
+  optional string description = 10;
+  repeated string file_urls = 11; // Ссылки на документы из candidate_documents
+  int64 created_at = 12;
+}
+
+message CreateCandidateRequest {
+  string first_name = 1;
+  string last_name = 2;
+  optional string patronymic = 3;
+  string email = 4;
+  string phone_number = 5;
+  repeated string skills = 6;
+  optional string status = 7;
+  optional string photo_url = 8;
+  optional string description = 9;
+  repeated string file_urls = 10; // При создании можно сразу загрузить документы
+}
+
+message UpdateCandidateRequest {
+  optional string first_name = 1;
+  optional string last_name = 2;
+  optional string patronymic = 3;
+  optional string email = 4;
+  optional string phone_number = 5;
+  repeated string skills = 6; // Для обновления skills: пустой массив = не менять, заполненный = заменить
+  optional string status = 7;
+  optional string photo_url = 8;
+  optional string description = 9;
+  repeated string file_urls = 10; // Для обновления документов: пустой массив = не менять, заполненный = заменить
+}
+
+// Сообщения для заметок (candidate_notes)
+message GetCandidateNotesRequest {
+  string candidate_id = 1;
+  int32 limit = 2;
+  int32 page = 3;
+}
+
+message GetCandidateNotesResponse {
+  repeated Note notes = 1;
+  common.PaginationResponse page = 2;
+}
+
+message Note {
+  string id = 1;
+  string candidate_id = 2;
+  string author_id = 3;
+  string content = 4; // Соответствует полю content в таблице
+  int64 created_at = 5;
+}
+
+message CreateCandidateNoteRequest {
+  string candidate_id = 1;
+  string author_id = 2;
+  string content = 3;
+}
+
+message UpdateCandidateNoteRequest {
+  optional string content = 1; // Только content можно обновить
+}
+
+// Сообщения для истории (candidate_history)
+message GetCandidateHistoryRequest {
+  string candidate_id = 1;
+  int32 limit = 2;
+  int32 page = 3;
+}
+
+message GetCandidateHistoryResponse {
+  repeated HistoryRecord records = 1;
+  common.PaginationResponse page = 2;
+}
+
+message HistoryRecord {
+  string id = 1;
+  string candidate_id = 2;
+  string event_type = 3;
+  string payload = 4; // Данные события в формате JSON
+  int64 create_at = 5; // Соответствует полю create_at в таблице
+}
+
+message AddCandidateHistoryRequest {
+  string candidate_id = 1;
+  string event_type = 2;
+  string payload = 3;
+}
