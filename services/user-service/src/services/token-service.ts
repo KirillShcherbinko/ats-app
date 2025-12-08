@@ -19,6 +19,7 @@ export const generateTokens = (payload: { userId: string; role: string }) => {
 export const validateToken = (token: string, secret: string): CustomJwtPayload | null => {
   try {
     const decoded = jwt.verify(token, secret) as JwtPayload;
+    console.log(decoded);
     if (typeof decoded === 'object' && decoded.userId && decoded.role) {
       return decoded as CustomJwtPayload;
     }

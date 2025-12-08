@@ -53,15 +53,9 @@ message ValidateTokenRequest {
 }
 
 message ValidateTokenResponse {
-  message Success {
-    string user_id = 1;
-    string role = 2;
-  }
-  
-  oneof result {
-    Success success = 1;
-    bool null = 2;
-  }
+  string user_id = 1;
+  string role = 2;
+  bool invalid = 3;
 }
 
 message GetUsersRequest {
@@ -85,8 +79,8 @@ message CreateUserRequest {
 message User {
   string id = 1;
   string role = 2;
-  string full_name = 2;
-  string email = 3;
+  string full_name = 3;
+  string email = 4;
   int64 created_at = 5;
   int64 updated_at = 6;
 }

@@ -1,21 +1,16 @@
-import * as grpc from '@grpc/grpc-js';
-import * as protoLoader from '@grpc/proto-loader';
-import path from 'path';
-import {
-  login,
-  register,
-  logout,
-  refresh,
-  validateAccessToken,
-} from './services/auth-service';
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import path from "path";
+import { login, register, logout, refresh } from "./services/auth-service";
 import {
   getUsers,
   getUser,
   createUser,
   deleteUser,
-} from './services/user-service';
+} from "./services/user-service";
+import { validateToken } from "./services/token-service";
 
-const PROTO_PATH = path.join(__dirname, '../../proto/user.proto');
+const PROTO_PATH = path.join(__dirname, "../proto/user.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: true,
@@ -88,8 +83,19 @@ const createGrpcServer = () => {
 
     ValidateToken: async (call: any, callback: any) => {
       try {
-        const result = await validateAccessToken(call.request.token, call.request.secret);
-        callback(null, result);
+        const decoded = validateToken(call.request.token, call.request.secret);
+
+        if (!decoded) {
+          callback(null, { user_id: "", role: "", invalid: true });
+          return;
+        }
+
+        // Если токен действителен — возвращаем только success
+        callback(null, {
+          user_id: decoded.userId,
+          role: decoded.role,
+          invalid: false,
+        });
       } catch (error: any) {
         callback({
           code: grpc.status.INTERNAL,
@@ -160,15 +166,15 @@ const createGrpcServer = () => {
 };
 
 export const startGrpcServer = () => {
-  const port = process.env.GRPC_PORT || '50051';
+  const port = process.env.USER_SERVICE_PORT || "50051";
   const server = createGrpcServer();
-  
+
   server.bindAsync(
     `0.0.0.0:${port}`,
     grpc.ServerCredentials.createInsecure(),
     (error, port) => {
       if (error) {
-        console.error('Failed to start gRPC server:', error);
+        console.error("Failed to start gRPC server:", error);
         return;
       }
       console.log(`User service gRPC server running on port ${port}`);

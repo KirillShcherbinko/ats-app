@@ -4,8 +4,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export default {
-  schema: './src/db/schema.ts', // Путь к вашей схеме
-  out: './drizzle/migrations',   // Папка для SQL-миграций
+  schema: './src/model/schema.ts',
+  out: './drizzle/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_URL!,

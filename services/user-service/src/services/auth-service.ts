@@ -1,7 +1,7 @@
-import { compare, hash } from 'bcrypt';
-import { db } from '../model';
-import { users, roles } from '../model/schema';
-import { eq } from 'drizzle-orm';
+import { compare, hash } from "bcrypt";
+import { db } from "../model";
+import { users, roles } from "../model/schema";
+import { eq } from "drizzle-orm";
 import {
   generateTokens,
   getToken,
@@ -9,12 +9,12 @@ import {
   saveToken,
   validateToken,
   removeAllUserTokens,
-} from './token-service';
-import { loginSchema, registerSchema } from '../schemas';
+} from "./token-service";
+import { loginSchema, registerSchema } from "../schemas";
 
 export const login = async (email: string, password: string) => {
   const validation = loginSchema.parse({ email, password });
-  
+
   const [user] = await db
     .select({
       id: users.id,
@@ -36,12 +36,12 @@ export const login = async (email: string, password: string) => {
     .where(eq(users.email, validation.email));
 
   if (!user) {
-    throw new Error('Invalid email');
+    throw new Error("Invalid email");
   }
 
   const isPasswordValid = await compare(password, user.password_hash);
   if (!isPasswordValid) {
-    throw new Error('Invalid password');
+    throw new Error("Invalid password");
   }
 
   const { accessToken, refreshToken } = generateTokens({
@@ -58,7 +58,9 @@ export const login = async (email: string, password: string) => {
     user: {
       id: user.id,
       role: user.role.title,
-      full_name: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
+      full_name: `${user.last_name} ${user.first_name} ${
+        user.patronymic || ""
+      }`.trim(),
       email: user.email,
       created_at: Math.floor(user.created_at.getTime() / 1000),
       updated_at: Math.floor(user.updated_at.getTime() / 1000),
@@ -87,16 +89,16 @@ export const register = async (
     .where(eq(users.email, validation.email));
 
   if (existingUser) {
-    throw new Error('User already exists');
+    throw new Error("User already exists");
   }
 
   const [adminRole] = await db
     .select()
     .from(roles)
-    .where(eq(roles.title, 'Администратор'));
+    .where(eq(roles.title, "Администратор"));
 
   if (!adminRole) {
-    throw new Error('Default role not found');
+    throw new Error("Default role not found");
   }
 
   const passwordHash = await hash(password, 10);
@@ -115,7 +117,7 @@ export const register = async (
 
   const { accessToken, refreshToken } = generateTokens({
     userId: newUser.id,
-    role: 'Администратор',
+    role: "Администратор",
   });
 
   await saveToken(newUser.id, refreshToken);
@@ -126,8 +128,10 @@ export const register = async (
     expires_in: 15 * 60,
     user: {
       id: newUser.id,
-      role: 'Администратор',
-      full_name: `${newUser.last_name} ${newUser.first_name} ${newUser.patronymic || ''}`.trim(),
+      role: "Администратор",
+      full_name: `${newUser.last_name} ${newUser.first_name} ${
+        newUser.patronymic || ""
+      }`.trim(),
       email: newUser.email,
       created_at: Math.floor(newUser.created_at.getTime() / 1000),
       updated_at: Math.floor(newUser.updated_at.getTime() / 1000),
@@ -142,17 +146,17 @@ export const logout = async (refreshToken: string) => {
 export const refresh = async (refreshToken: string) => {
   const tokenData = await getToken(refreshToken);
   if (!tokenData) {
-    throw new Error('No refresh token');
+    throw new Error("No refresh token");
   }
 
   const { JWT_REFRESH_SECRET } = process.env;
   if (!JWT_REFRESH_SECRET) {
-    throw new Error('Refresh secret not configured');
+    throw new Error("Refresh secret not configured");
   }
 
   const decoded = validateToken(refreshToken, JWT_REFRESH_SECRET);
   if (!decoded) {
-    throw new Error('Invalid refresh token');
+    throw new Error("Invalid refresh token");
   }
 
   const [user] = await db
@@ -173,7 +177,7 @@ export const refresh = async (refreshToken: string) => {
     .where(eq(users.id, decoded.userId));
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   const { accessToken, refreshToken: newRefreshToken } = generateTokens({
@@ -191,26 +195,12 @@ export const refresh = async (refreshToken: string) => {
     user: {
       id: user.id,
       role: user.role.title,
-      full_name: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
+      full_name: `${user.last_name} ${user.first_name} ${
+        user.patronymic || ""
+      }`.trim(),
       email: user.email,
       created_at: Math.floor(user.created_at.getTime() / 1000),
       updated_at: Math.floor(user.updated_at.getTime() / 1000),
-    },
-  };
-};
-
-export const validateAccessToken = async (token: string, secret: string) => {
-  const decoded = validateToken(token, secret);
-  if (!decoded) {
-    return { result: { null: true } };
-  }
-
-  return {
-    result: {
-      success: {
-        user_id: decoded.userId,
-        role: decoded.role,
-      },
     },
   };
 };
