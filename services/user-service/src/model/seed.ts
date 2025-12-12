@@ -10,10 +10,8 @@ export const seedDatabase = async () => {
         { title: 'Администратор' },
         { title: 'Рекрутер' },
       ]);
-      console.log('Database seeded with initial roles');
     }
   } catch (error) {
-    console.error('Error seeding database:', error);
     throw error;
   }
 };
