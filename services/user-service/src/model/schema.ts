@@ -1,41 +1,62 @@
-import { pgTable, varchar, timestamp, text, uuid } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { z } from "zod";
+import {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  MAX_LIMIT,
+  MIN_FIRST_NAME_LENGTH,
+  MIN_LAST_NAME_LENGTH,
+  MIN_LIMIT,
+  MIN_PAGE,
+  MIN_PASSWORD_LENGTH,
+} from "./consts";
+import { ERole } from "./types";
 
-export const roles = pgTable('roles', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: varchar('title', { length: 50 }).notNull(),
+export const loginSchema = z.object({
+  email: z.email("Invalid email format"),
+  password: z
+    .string()
+    .min(
+      MIN_PASSWORD_LENGTH,
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    ),
 });
 
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  password_hash: varchar('password_hash', { length: 255 }).notNull(),
-  first_name: varchar('first_name', { length: 100 }).notNull(),
-  last_name: varchar('last_name', { length: 100 }).notNull(),
-  patronymic: varchar('patronymic', { length: 100 }),
-  role_id: uuid('role_id').references(() => roles.id).notNull(),
-  created_at: timestamp('created_at').defaultNow().notNull(),
-  updated_at: timestamp('updated_at').defaultNow().notNull(),
+export const registerSchema = z.object({
+  lastName: z.string().min(MIN_LAST_NAME_LENGTH, "Last name is required"),
+  firstName: z.string().min(MIN_FIRST_NAME_LENGTH, "First name is required"),
+  patronymic: z.string().nullable(),
+  email: z.email("Invalid email format"),
+  password: z
+    .string()
+    .min(
+      MIN_PASSWORD_LENGTH,
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    ),
+  roleName: z.enum(ERole),
 });
 
-export const tokens = pgTable('tokens', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  user_id: uuid('user_id').references(() => users.id).notNull(),
-  refresh_token: text('refresh_token').notNull(),
+export const createUserSchema = z.object({
+  lastName: z.string().min(MIN_LAST_NAME_LENGTH, "Last name is required"),
+  firstName: z.string().min(MIN_FIRST_NAME_LENGTH, "First name is required"),
+  patronymic: z.string().nullable(),
+  email: z.email("Invalid email format"),
 });
 
-// Relations
-export const usersRelations = relations(users, ({ one, many }) => ({
-  role: one(roles, {
-    fields: [users.role_id],
-    references: [roles.id],
-  }),
-  tokens: many(tokens),
-}));
+export const updatedUserSchema = z.object({
+  lastName: z
+    .string()
+    .min(MIN_LAST_NAME_LENGTH, "Last name is required")
+    .optional(),
+  firstName: z
+    .string()
+    .min(MIN_FIRST_NAME_LENGTH, "First name is required")
+    .optional(),
+  patronymic: z.string().optional().nullable(),
+  email: z.email("Invalid email format").optional(),
+});
 
-export const tokensRelations = relations(tokens, ({ one }) => ({
-  user: one(users, {
-    fields: [tokens.user_id],
-    references: [users.id],
-  }),
-}));
+export const paginationSchema = z.object({
+  limit: z.number().min(MIN_LIMIT).max(MAX_LIMIT).default(DEFAULT_LIMIT),
+  page: z.number().min(MIN_PAGE).default(DEFAULT_PAGE),
+  searchQuery: z.string().optional(),
+});

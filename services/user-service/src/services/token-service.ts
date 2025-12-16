@@ -1,50 +1,91 @@
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import { db } from '../model';
-import { tokens } from '../model/schema';
-import { eq } from 'drizzle-orm';
-import { JwtPayload as CustomJwtPayload } from '../types';
+import { TokenRepository } from "./../repository/token-repository";
+import jwt from "jsonwebtoken";
+import {
+  TGenerateTokensResponse,
+  TJWTPayload,
+  TToken,
+  TValidateTokenResponse,
+} from "@/model/types";
+import {
+  ACCESS_TOKEN_EXPIRATION,
+  REFRESH_TOKEN_EXPIRATION,
+} from "@/model/consts";
+import { BadRequestError } from "@/error/bad-request";
 
-export const generateTokens = (payload: { userId: string; role: string }) => {
-  const { JWT_ACCESS_SECRET, JWT_REFRESH_SECRET } = process.env;
-  if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
-    throw new Error('Invalid token secret');
-  }
+////////// Сервис для работы с токенами //////////
+export class TokenService {
+  private tokenRepository = new TokenRepository();
 
-  const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: '15m' });
-  const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '10h' });
-
-  return { accessToken, refreshToken };
-};
-
-export const validateToken = (token: string, secret: string): CustomJwtPayload | null => {
-  try {
-    const decoded = jwt.verify(token, secret) as JwtPayload;
-    console.log(decoded);
-    if (typeof decoded === 'object' && decoded.userId && decoded.role) {
-      return decoded as CustomJwtPayload;
+  // Генерация токенов
+  public generateTokens(payload: TJWTPayload): TGenerateTokensResponse {
+    const { JWT_ACCESS_SECRET, JWT_REFRESH_SECRET } = process.env;
+    if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
+      throw new BadRequestError("Invalid token secret");
     }
-    return null;
-  } catch {
-    return null;
+
+    const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, {
+      expiresIn: ACCESS_TOKEN_EXPIRATION,
+    });
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
+      expiresIn: REFRESH_TOKEN_EXPIRATION,
+    });
+
+    return { accessToken, refreshToken };
   }
-};
 
-export const saveToken = async (userId: string, refreshToken: string) => {
-  await db.insert(tokens).values({ user_id: userId, refresh_token: refreshToken });
-};
+  // Валидация access токена
+  public validateAccessToken(token: string): TValidateTokenResponse {
+    try {
+      const { JWT_ACCESS_SECRET } = process.env;
+      if (!JWT_ACCESS_SECRET) {
+        throw new Error("Refresh secret not configured");
+      }
 
-export const getToken = async (refreshToken: string) => {
-  const [token] = await db
-    .select()
-    .from(tokens)
-    .where(eq(tokens.refresh_token, refreshToken));
-  return token;
-};
+      const decoded = jwt.verify(token, JWT_ACCESS_SECRET);
+      if (typeof decoded === "object" && decoded.userId && decoded.role) {
+        return { userId: decoded.userId, role: decoded.role };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
-export const removeToken = async (refreshToken: string) => {
-  await db.delete(tokens).where(eq(tokens.refresh_token, refreshToken));
-};
+  // Валидация refresh токена
+  public validateRefreshToken(token: string): TValidateTokenResponse {
+    try {
+      const { JWT_REFRESH_SECRET } = process.env;
+      if (!JWT_REFRESH_SECRET) {
+        throw new Error("Refresh secret not configured");
+      }
 
-export const removeAllUserTokens = async (userId: string) => {
-  await db.delete(tokens).where(eq(tokens.user_id, userId));
-};
+      const decoded = jwt.verify(token, JWT_REFRESH_SECRET);
+      if (typeof decoded === "object" && decoded.userId && decoded.role) {
+        return { userId: decoded.userId, role: decoded.role };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Создание токена
+  public async saveToken(userId: string, refreshToken: string): Promise<void> {
+    const token = await this.tokenRepository.findOneByUserId(userId);
+    if (token) {
+      await this.tokenRepository.update(token.id, refreshToken);
+      return;
+    }
+    await this.tokenRepository.create(userId, refreshToken);
+  }
+
+  // Получение токена
+  public async getToken(refreshToken: string): Promise<TToken> {
+    return await this.tokenRepository.findOneByRefreshToken(refreshToken);
+  }
+
+  // Удаление токена
+  public async deleteToken(refreshToken: string): Promise<void> {
+    await this.tokenRepository.delete(refreshToken);
+  }
+}

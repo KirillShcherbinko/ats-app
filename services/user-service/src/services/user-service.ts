@@ -1,170 +1,149 @@
-import { db } from '../model';
-import { users, roles } from '../model/schema';
-import { eq, and, or, like, desc, count, sql } from 'drizzle-orm';
-import { hash } from 'bcrypt';
-import { createUserSchema, paginationSchema } from '../schemas';
-import { generatePassword } from '../utils/password-generator';
+import { hash } from "bcrypt";
+import {
+  createUserSchema,
+  paginationSchema,
+  updatedUserSchema,
+} from "@/model/schema";
+import { generatePassword } from "@/utils/password-generator";
+import { UserRepository } from "@/repository/user-repository";
+import { AlreadyExistsError } from "@/error/already-exists";
+import { NotFoundError } from "@/error/not-found";
+import {
+  ERole,
+  TCreateUserResponse,
+  TDeleteUserResponse,
+  TGetUserResponse,
+  TGetUsersResponse,
+  TUpdateUserResponse,
+} from "@/model/types";
+import { DEFAULT_PASSWORD_LENGTH, HASH_LEVEL } from "@/model/consts";
 
-export const getUsers = async (limit: number, page: number, search_query?: string) => {
-  const validation = paginationSchema.parse({ limit, page, search_query });
-  
-  const offset = (validation.page - 1) * validation.limit;
-  
-  let whereConditions = [];
-  
-  if (validation.search_query) {
-    const search = `%${validation.search_query}%`;
-    whereConditions.push(
-      or(
-        like(users.email, search),
-        like(users.first_name, search),
-        like(users.last_name, search),
-        like(users.patronymic || sql`''`, search)
-      )
+////////// Сервис для работы с сотрудниками //////////
+export class UserService {
+  private userRepository = new UserRepository();
+
+  // Получение всех сотрудника администратора
+  public async getUsers(
+    id: string,
+    limit: number,
+    page: number,
+    searchQuery?: string
+  ): Promise<TGetUsersResponse> {
+    paginationSchema.parse({ limit, page, searchQuery });
+
+    const userList = await this.userRepository.find(
+      id,
+      limit,
+      page,
+      searchQuery
+    );
+    const total = await this.userRepository.countRecords();
+
+    return {
+      users: userList.map((user) => ({
+        id: user.id,
+        role: user.role.title,
+        fullName: `${user.lastName} ${user.firstName} ${
+          user.patronymic || ""
+        }`.trim(),
+        email: user.email,
+        createdAt: Math.floor(user.createdAt.getTime() / 1000),
+        updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
+      })),
+      pageData: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(Number(total) / limit),
+      },
+    };
+  }
+
+  // Получение одного пользователя
+  public async getUser(id: string): Promise<TGetUserResponse> {
+    const user = await this.userRepository.findOne(id);
+
+    if (!user) {
+      throw new NotFoundError(`User with id ${id} not found`);
+    }
+
+    return {
+      id: user.id,
+      role: user.role.title,
+      fullName: `${user.lastName} ${user.firstName} ${
+        user.patronymic || ""
+      }`.trim(),
+      email: user.email,
+      createdAt: Math.floor(user.createdAt.getTime() / 1000),
+      updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
+    };
+  }
+
+  // Создание пользователя
+  public async createUser(
+    administratorId: string,
+    email: string,
+    lastName: string,
+    firstName: string,
+    roleName: ERole,
+    patronymic: string | null
+  ): Promise<TCreateUserResponse> {
+    createUserSchema.parse({ email, lastName, firstName, patronymic });
+
+    const isExists = await this.userRepository.isExists(email);
+
+    if (isExists) {
+      throw new AlreadyExistsError(`User with email ${email} already exists`);
+    }
+
+    const generatedPassword = generatePassword(DEFAULT_PASSWORD_LENGTH);
+    const passwordHash = await hash(generatedPassword, HASH_LEVEL);
+
+    const role = await this.userRepository.getRole(roleName);
+
+    return await this.userRepository.create(
+      administratorId,
+      role.id,
+      email,
+      passwordHash,
+      lastName,
+      firstName,
+      patronymic
     );
   }
 
-  const userQuery = db
-    .select({
-      id: users.id,
-      email: users.email,
-      first_name: users.first_name,
-      last_name: users.last_name,
-      patronymic: users.patronymic,
-      created_at: users.created_at,
-      updated_at: users.updated_at,
-      role: {
-        title: roles.title,
-      },
-    })
-    .from(users)
-    .innerJoin(roles, eq(users.role_id, roles.id))
-    .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-    .limit(validation.limit)
-    .offset(offset)
-    .orderBy(desc(users.created_at));
+  public async updateUser(
+    id: string,
+    email?: string,
+    lastName?: string,
+    firstName?: string,
+    patronymic?: string | null
+  ): Promise<TUpdateUserResponse> {
+    updatedUserSchema.parse({ email, lastName, firstName, patronymic });
 
-  const countQuery = db
-    .select({ count: count() })
-    .from(users)
-    .innerJoin(roles, eq(users.role_id, roles.id))
-    .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+    const isExists = this.userRepository.isExists(id);
 
-  const [usersList, [{ count: total }]] = await Promise.all([userQuery, countQuery]);
+    if (!isExists) {
+      throw new NotFoundError(`User with id ${id} not found`);
+    }
 
-  return {
-    users: usersList.map(user => ({
-      id: user.id,
-      role: user.role.title,
-      full_name: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
-      email: user.email,
-      created_at: Math.floor(user.created_at.getTime() / 1000),
-      updated_at: Math.floor(user.updated_at.getTime() / 1000),
-    })),
-    page: {
-      page: validation.page,
-      limit: validation.limit,
-      total: Number(total),
-      total_pages: Math.ceil(Number(total) / validation.limit),
-    },
-  };
-};
-
-export const getUser = async (id: string) => {
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      first_name: users.first_name,
-      last_name: users.last_name,
-      patronymic: users.patronymic,
-      created_at: users.created_at,
-      updated_at: users.updated_at,
-      role: {
-        title: roles.title,
-      },
-    })
-    .from(users)
-    .innerJoin(roles, eq(users.role_id, roles.id))
-    .where(eq(users.id, id));
-
-  if (!user) {
-    throw new Error('User not found');
+    return await this.userRepository.update(
+      id,
+      email,
+      lastName,
+      firstName,
+      patronymic
+    );
   }
 
-  return {
-    id: user.id,
-    role: user.role.title,
-    full_name: `${user.last_name} ${user.first_name} ${user.patronymic || ''}`.trim(),
-    email: user.email,
-    created_at: Math.floor(user.created_at.getTime() / 1000),
-    updated_at: Math.floor(user.updated_at.getTime() / 1000),
-  };
-};
+  // Удаление пользователя
+  public async deleteUser(id: string): Promise<TDeleteUserResponse> {
+    const isExists = this.userRepository.isExists(id);
 
-export const createUser = async (
-  last_name: string,
-  first_name: string,
-  patronymic: string | undefined,
-  email: string
-) => {
-  const validation = createUserSchema.parse({
-    last_name,
-    first_name,
-    patronymic,
-    email,
-  });
+    if (!isExists) {
+      throw new NotFoundError(`User with id ${id} not found`);
+    }
 
-  const [existingUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, validation.email));
-
-  if (existingUser) {
-    throw new Error('User already exists');
+    await this.userRepository.delete(id);
   }
-
-  const [recruiterRole] = await db
-    .select()
-    .from(roles)
-    .where(eq(roles.title, 'Рекрутер'));
-
-  if (!recruiterRole) {
-    throw new Error('Default role not found');
-  }
-
-  const generatedPassword = generatePassword(12);
-  const passwordHash = await hash(generatedPassword, 10);
-
-  const [newUser] = await db
-    .insert(users)
-    .values({
-      last_name: validation.last_name,
-      first_name: validation.first_name,
-      patronymic: validation.patronymic || null,
-      email: validation.email,
-      password_hash: passwordHash,
-      role_id: recruiterRole.id,
-    })
-    .returning();
-
-  // In production, you would send the password to the user via email
-  console.log(`Generated password for ${newUser.email}: ${generatedPassword}`);
-
-  const userWithRole = await getUser(newUser.id);
-  return userWithRole;
-};
-
-export const deleteUser = async (id: string) => {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id));
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  await db.delete(users).where(eq(users.id, id));
-  return {};
-};
+}

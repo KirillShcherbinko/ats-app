@@ -1,206 +1,146 @@
+import { AuthRepository } from "./../repository/auth-repository";
 import { compare, hash } from "bcrypt";
-import { db } from "../model";
-import { users, roles } from "../model/schema";
-import { eq } from "drizzle-orm";
+import { TokenService } from "./token-service";
+import { loginSchema, registerSchema } from "@/model/schema";
+import { AlreadyExistsError } from "@/error/already-exists";
+import { HASH_LEVEL, NUMERIC_EXPIRATION } from "@/model/consts";
+import { BadRequestError } from "@/error/bad-request";
+import { NotFoundError } from "@/error/not-found";
 import {
-  generateTokens,
-  getToken,
-  removeToken,
-  saveToken,
-  validateToken,
-  removeAllUserTokens,
-} from "./token-service";
-import { loginSchema, registerSchema } from "../schemas";
+  ERole,
+  TAuthReponse,
+  TLoginResponse,
+  TLogoutResponse,
+  TRefreshResponse,
+  TRegisterResponse,
+  TUserWithRoleData,
+} from "@/model/types";
 
-export const login = async (email: string, password: string) => {
-  const validation = loginSchema.parse({ email, password });
+export class AuthService {
+  private authRepository = new AuthRepository();
+  private tokenService = new TokenService();
 
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      password_hash: users.password_hash,
-      first_name: users.first_name,
-      last_name: users.last_name,
-      patronymic: users.patronymic,
-      role_id: users.role_id,
-      created_at: users.created_at,
-      updated_at: users.updated_at,
-      role: {
-        id: roles.id,
-        title: roles.title,
-      },
-    })
-    .from(users)
-    .innerJoin(roles, eq(users.role_id, roles.id))
-    .where(eq(users.email, validation.email));
-
-  if (!user) {
-    throw new Error("Invalid email");
-  }
-
-  const isPasswordValid = await compare(password, user.password_hash);
-  if (!isPasswordValid) {
-    throw new Error("Invalid password");
-  }
-
-  const { accessToken, refreshToken } = generateTokens({
-    userId: user.id,
-    role: user.role.title,
-  });
-
-  await saveToken(user.id, refreshToken);
-
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_in: 15 * 60, // 15 minutes in seconds
-    user: {
-      id: user.id,
+  // Генерация токенов и возврат данных
+  private async generateTokensAndReturnData(
+    user: TUserWithRoleData
+  ): Promise<TAuthReponse> {
+    const { accessToken, refreshToken } = this.tokenService.generateTokens({
+      userId: user.id,
       role: user.role.title,
-      full_name: `${user.last_name} ${user.first_name} ${
-        user.patronymic || ""
-      }`.trim(),
-      email: user.email,
-      created_at: Math.floor(user.created_at.getTime() / 1000),
-      updated_at: Math.floor(user.updated_at.getTime() / 1000),
-    },
-  };
-};
+    });
 
-export const register = async (
-  last_name: string,
-  first_name: string,
-  patronymic: string | undefined,
-  email: string,
-  password: string
-) => {
-  const validation = registerSchema.parse({
-    last_name,
-    first_name,
-    patronymic,
-    email,
-    password,
-  });
+    await this.tokenService.saveToken(user.id, refreshToken);
 
-  const [existingUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, validation.email));
-
-  if (existingUser) {
-    throw new Error("User already exists");
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: NUMERIC_EXPIRATION,
+      user: {
+        id: user.id,
+        role: user.role.title,
+        fullName: `${user.lastName} ${user.firstName} ${
+          user.patronymic || ""
+        }`.trim(),
+        email: user.email,
+        createdAt: Math.floor(user.createdAt.getTime() / 1000),
+        updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
+      },
+    };
   }
 
-  const [adminRole] = await db
-    .select()
-    .from(roles)
-    .where(eq(roles.title, "Администратор"));
+  // Вход пользователя в систему
+  public async login(email: string, password: string): Promise<TLoginResponse> {
+    loginSchema.parse({ email, password });
 
-  if (!adminRole) {
-    throw new Error("Default role not found");
+    const user = await this.authRepository.findOneByEmail(email);
+
+    if (!user) {
+      throw new NotFoundError(`User with email ${email} doesn't exist`);
+    }
+
+    const isPasswordValid = await compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestError("Invalid password");
+    }
+
+    return await this.generateTokensAndReturnData(user);
   }
 
-  const passwordHash = await hash(password, 10);
+  // Регистрация пользователя
+  public async register(
+    email: string,
+    password: string,
+    lastName: string,
+    firstName: string,
+    patronymic: string | null,
+    roleName: ERole
+  ): Promise<TRegisterResponse> {
+    registerSchema.parse({
+      lastName,
+      firstName,
+      patronymic,
+      email,
+      password,
+      roleName,
+    });
 
-  const [newUser] = await db
-    .insert(users)
-    .values({
-      last_name: validation.last_name,
-      first_name: validation.first_name,
-      patronymic: validation.patronymic || null,
-      email: validation.email,
-      password_hash: passwordHash,
-      role_id: adminRole.id,
-    })
-    .returning();
+    const isExists = await this.authRepository.isExists(email);
+    if (isExists) {
+      throw new AlreadyExistsError(`User with email ${email} already exists`);
+    }
 
-  const { accessToken, refreshToken } = generateTokens({
-    userId: newUser.id,
-    role: "Администратор",
-  });
+    const passwordHash = await hash(password, HASH_LEVEL);
+    const role = await this.authRepository.getRole(roleName);
 
-  await saveToken(newUser.id, refreshToken);
+    const newUser = await this.authRepository.create(
+      null,
+      role.id,
+      email,
+      passwordHash,
+      lastName,
+      firstName,
+      patronymic
+    );
 
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_in: 15 * 60,
-    user: {
+    if (!newUser.id || !newUser.createdAt || !newUser.updatedAt) {
+      throw new Error("Invalid Server Response");
+    }
+
+    const userWithRole: TUserWithRoleData = {
       id: newUser.id,
-      role: "Администратор",
-      full_name: `${newUser.last_name} ${newUser.first_name} ${
-        newUser.patronymic || ""
-      }`.trim(),
       email: newUser.email,
-      created_at: Math.floor(newUser.created_at.getTime() / 1000),
-      updated_at: Math.floor(newUser.updated_at.getTime() / 1000),
-    },
-  };
-};
-
-export const logout = async (refreshToken: string) => {
-  await removeToken(refreshToken);
-};
-
-export const refresh = async (refreshToken: string) => {
-  const tokenData = await getToken(refreshToken);
-  if (!tokenData) {
-    throw new Error("No refresh token");
-  }
-
-  const { JWT_REFRESH_SECRET } = process.env;
-  if (!JWT_REFRESH_SECRET) {
-    throw new Error("Refresh secret not configured");
-  }
-
-  const decoded = validateToken(refreshToken, JWT_REFRESH_SECRET);
-  if (!decoded) {
-    throw new Error("Invalid refresh token");
-  }
-
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      first_name: users.first_name,
-      last_name: users.last_name,
-      patronymic: users.patronymic,
-      created_at: users.created_at,
-      updated_at: users.updated_at,
+      lastName: newUser.lastName,
+      firstName: newUser.firstName,
+      patronymic: newUser.patronymic || null,
+      createdAt: newUser.createdAt,
+      updatedAt: newUser.updatedAt,
       role: {
-        title: roles.title,
+        title: roleName,
       },
-    })
-    .from(users)
-    .innerJoin(roles, eq(users.role_id, roles.id))
-    .where(eq(users.id, decoded.userId));
+    };
 
-  if (!user) {
-    throw new Error("User not found");
+    return await this.generateTokensAndReturnData(userWithRole);
   }
 
-  const { accessToken, refreshToken: newRefreshToken } = generateTokens({
-    userId: decoded.userId,
-    role: user.role.title,
-  });
+  // Выход пользователя из системы
+  public async logout(refreshToken: string): Promise<TLogoutResponse> {
+    await this.tokenService.deleteToken(refreshToken);
+  }
 
-  await removeToken(refreshToken);
-  await saveToken(decoded.userId, newRefreshToken);
+  // Обнолвение access токена
+  public async refresh(refreshToken: string): Promise<TRefreshResponse> {
+    const token = await this.tokenService.getToken(refreshToken);
+    if (!token) {
+      throw new Error("No refresh token");
+    }
 
-  return {
-    access_token: accessToken,
-    refresh_token: newRefreshToken,
-    expires_in: 15 * 60,
-    user: {
-      id: user.id,
-      role: user.role.title,
-      full_name: `${user.last_name} ${user.first_name} ${
-        user.patronymic || ""
-      }`.trim(),
-      email: user.email,
-      created_at: Math.floor(user.created_at.getTime() / 1000),
-      updated_at: Math.floor(user.updated_at.getTime() / 1000),
-    },
-  };
-};
+    const decoded = this.tokenService.validateRefreshToken(refreshToken);
+    if (!decoded) {
+      throw new Error("Invalid refresh token");
+    }
+
+    const user = await this.authRepository.findOne(decoded.userId);
+
+    return await this.generateTokensAndReturnData(user);
+  }
+}

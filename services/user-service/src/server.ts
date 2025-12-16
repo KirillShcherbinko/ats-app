@@ -1,7 +1,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
-import { login, register, logout, refresh } from "./services/auth-service";
+import { login, register, logout, refresh, AuthService } from "./services/auth-service";
 import {
   getUsers,
   getUser,
@@ -22,6 +22,8 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 
 const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
 const userPackage = protoDescriptor.user as any;
+
+const authService = new AuthService();
 
 const createGrpcServer = () => {
   const server = new grpc.Server();
@@ -177,7 +179,7 @@ export const startGrpcServer = () => {
         console.error("Failed to start gRPC server:", error);
         return;
       }
-      console.log(`User service gRPC server running on port ${port}`);
+      console.log(`User service gRPC server is running on port ${port}`);
     }
   );
 };
