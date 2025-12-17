@@ -29,6 +29,13 @@ export type TJWTPayload = {
 };
 
 ////////// Типы для возвращаемых данных //////////
+export type TPageData = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
 export type TUserData = {
   id: string;
   role: ERole;
@@ -77,10 +84,47 @@ export type TRegisterRequest = {
   lastName: string;
   firstName: string;
   patronymic: string | null;
-  roleName: ERole;
+  roleName: EGRPCRole;
 };
 export type TLogoutRequest = {
   refreshToken: string;
+};
+export type TRefreshRequest = {
+  refreshToken: string;
+};
+
+// User Service
+export type TGetUsersRequest = {
+  id: string;
+  limit: number;
+  page: number;
+  searchQuery?: string;
+};
+export type TGetUserRequest = {
+  id: string;
+};
+export type TCreateUserRequest = {
+  administratorId: string;
+  email: string;
+  lastName: string;
+  firstName: string;
+  roleName: EGRPCRole;
+  patronymic: string | null;
+};
+export type TUpdateUserRequest = {
+  id: string;
+  email?: string;
+  lastName?: string;
+  firstName?: string;
+  patronymic?: string | null;
+};
+export type TDeleteUserRequest = {
+  id: string;
+};
+
+// Token Service
+export type TValidateTokenRequest = {
+  token: string;
 };
 
 ////////// Типы ответов //////////
@@ -99,12 +143,7 @@ export type TRefreshResponse = TAuthReponse;
 // User Service
 export type TGetUsersResponse = {
   users: TUserData[];
-  pageData: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  pageData: TPageData;
 };
 export type TGetUserResponse = TUserData;
 export type TCreateUserResponse = TNewUser;

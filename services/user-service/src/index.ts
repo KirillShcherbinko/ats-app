@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { startGrpcServer } from './server';
+import { startGrpcServer } from './grpc/server';
 import { seedDatabase } from './db/seed';
 
 const startServer = async () => {
