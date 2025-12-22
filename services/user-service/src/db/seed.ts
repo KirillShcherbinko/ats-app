@@ -1,4 +1,4 @@
-import { ERole } from "@/model/types";
+import { ERole } from "@/types/common";
 import { db } from "./index";
 import { roles } from "./schema";
 

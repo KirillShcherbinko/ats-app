@@ -7,7 +7,7 @@ import {
   foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import { ERole } from "@/model/types";
+import { ERole } from "@/types/common";
 
 const roleValues = Object.values(ERole) as [ERole, ...ERole[]];
 

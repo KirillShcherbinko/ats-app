@@ -1,5 +1,5 @@
 {
-  "id": "a8eea858-0128-4fdc-8996-2defbcd4e8dc",
+  "id": "f8ccace2-562f-4e8d-b5cc-67dffc35b50c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -17,9 +17,10 @@
         },
         "title": {
           "name": "title",
-          "type": "varchar(50)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'Рекрутер'"
         }
       },
       "indexes": {},
@@ -99,14 +100,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "first_name": {
-          "name": "first_name",
+        "last_name": {
+          "name": "last_name",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
         },
-        "last_name": {
-          "name": "last_name",
+        "first_name": {
+          "name": "first_name",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
@@ -116,6 +117,13 @@
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false
+        },
+        "administrator_id": {
+          "name": "administrator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "null"
         },
         "role_id": {
           "name": "role_id",
@@ -140,8 +148,21 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "users_role_id_roles_id_fk": {
-          "name": "users_role_id_roles_id_fk",
+        "user_administrator_fk": {
+          "name": "user_administrator_fk",
+          "tableFrom": "users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "administrator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_role_fk": {
+          "name": "user_role_fk",
           "tableFrom": "users",
           "tableTo": "roles",
           "columnsFrom": [
@@ -150,7 +171,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },

@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 
 # Проброс порта
-EXPOSE 50051
+EXPOSE 50061
 
 # Старт
 CMD ["sh", "-c", "npx drizzle-kit push --config=./drizzle.config.ts && npm run dev"]
