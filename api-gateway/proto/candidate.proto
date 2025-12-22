@@ -1,4 +1,3 @@
-// proto/candidate.proto
 syntax = "proto3";
 
 package candidate;

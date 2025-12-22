@@ -1,86 +1,191 @@
-// proto/user.proto
 syntax = "proto3";
 
-package user;
+package user.service;
 
 import "common.proto";
 
-service UserService {
-  rpc Login (LoginRequest) returns (AuthResponse);
-  rpc Register (RegisterRequest) returns (AuthResponse);
-  rpc Logout (LogoutRequest) returns (common.Empty);
-  rpc Refresh (RefreshRequest) returns (AuthResponse);
+////////// Enums //////////
 
-  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
-
-  rpc GetUsers (GetUsersRequest) returns (GetUsersResponse);
-  rpc GetUser (common.Id) returns (User);
-  rpc CreateUser (CreateUserRequest) returns (User);
-  rpc DeleteUser (common.Id) returns (common.Empty);
+// Enum для ролей
+enum EGRPCRole {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_ADMIN = 1;
+  ROLE_RECRUITER = 2;
 }
 
+////////// Вспомогательные типы //////////
+
+// Данные пользователя
+message UserData {
+  string id = 1;
+  EGRPCRole role = 2;
+  string full_name = 3;
+  string email = 4;
+  int64 created_at = 5;
+  int64 updated_at = 6;
+}
+
+// Данные токена
+message TokenData {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+////////// Запросы //////////
+
+// Auth Service
+
+// Запрос метода логина
 message LoginRequest {
   string email = 1;
   string password = 2;
 }
 
+// Запрос метода регистрации
 message RegisterRequest {
-  string last_name = 1;
-  string first_name = 2;
-  optional string patronymic = 3;
-  string email = 4;
-  string password = 5;
+  string email = 1;
+  string password = 2;
+  string last_name = 3;
+  string first_name = 4;
+  optional string patronymic = 5;
+  EGRPCRole role_name = 6;
 }
 
+// Запрос метода логаута
 message LogoutRequest {
   string refresh_token = 1;
 }
 
+// Запрос метода обновления токена
 message RefreshRequest {
   string refresh_token = 1;
 }
 
+// User Service
+
+// Запрос метода получения пользователей
+message GetUsersRequest {
+  string id = 1;
+  int32 limit = 2;
+  int32 page = 3;
+  optional string search_query = 4;
+}
+
+// Запрос метода получения одного пользователя
+message GetUserRequest {
+  string id = 1;
+}
+
+// Запрос создания пользователя
+message CreateUserRequest {
+  string administrator_id = 1;
+  string email = 2;
+  string last_name = 3;
+  string first_name = 4;
+  EGRPCRole role_name = 5;
+  optional string patronymic = 6;
+}
+
+// Запрос обновления данных пользователя
+message UpdateUserRequest {
+  string id = 1;
+  optional string email = 2;
+  optional string last_name = 3;
+  optional string first_name = 4;
+  optional string patronymic = 5;
+}
+
+// Запрос удаления пользователя
+message DeleteUserRequest {
+  string id = 1;
+}
+
+// Token Service
+
+// Запрос метода валидации токена
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+////////// Ответы //////////
+
+// Auth Service
+
+// Ответ методов сервиса авторизации
 message AuthResponse {
   string access_token = 1;
   string refresh_token = 2;
   int64 expires_in = 3;
-  User user = 4;
+  UserData user = 4;
 }
 
-message ValidateTokenRequest {
-  string token = 1;
-  string secret = 2;
-}
+// Ответ метода логаута
+message LogoutResponse {}
 
-message ValidateTokenResponse {
-  string user_id = 1;
-  string role = 2;
-  bool invalid = 3;
-}
+// User Service
 
-message GetUsersRequest {
-  int32 limit = 1;
-  int32 page = 2;
-  optional string search_query = 3;
-}
-
+// Ответ метода получения пользователей
 message GetUsersResponse {
-  repeated User users = 1;
-  common.PaginationResponse page = 2;
+  repeated UserData users = 1;
+  common.PageData page_data = 2;
 }
 
-message CreateUserRequest {
-  string last_name = 1;
-  string first_name = 2;
-  optional string patronymic = 3;
-  string email = 4;
+// Ответ метода получения одного пользователя
+message GetUserResponse {
+  UserData user = 1;
 }
 
-message User {
-  string id = 1;
-  string role = 2;
-  string full_name = 3;
-  string email = 4;
-  int64 created_at = 5;
-  int64 updated_at = 6;
+// Ответ метода создания пользователя
+message CreateUserResponse {
+  UserData user = 1;
+}
+
+// Ответ метода обновления пользователя
+message UpdateUserResponse {
+  UserData user = 1;
+}
+
+// Ответ метода удаления пользователя
+message DeleteUserResponse {}
+
+// Token Service
+
+// Ответ метода валидации токена
+message ValidateTokenResponse {
+  bool is_valid = 1;
+  optional string user_id = 2;
+  optional EGRPCRole role = 3;
+}
+
+////////// Методы сервиса //////////
+service UserService {
+  // Метод логина
+  rpc Login(LoginRequest) returns (AuthResponse);
+
+  // Метод регистрации
+  rpc Register(RegisterRequest) returns (AuthResponse);
+
+  // Метод логаута
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // Метод обновления токена
+  rpc Refresh(RefreshRequest) returns (AuthResponse);
+
+  // Метод получения пользователей
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+
+  // Метод получения пользователя
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // Метод создания пользователя
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // Метод обновления данных пользователя
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Метод удаления пользователя
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // Метод валидации токена
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
 }

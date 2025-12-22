@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { tokens } from "@/db/schema";
-import { TNewToken, TToken } from "@/model/types";
+import { TToken, TNewToken } from "@/types/db";
 import { eq } from "drizzle-orm";
 
 ////////// Репозиторий для запросов для токена //////////

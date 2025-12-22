@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { grpcClient } from "../grpc-client";
+import { grpcClient } from "../grpc/client";
 
 export const userController = {
   getUsers: async (req: Request, res: Response) => {

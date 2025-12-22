@@ -1,7 +1,7 @@
 import { roles, users } from "@/db/schema";
 import { BaseRepository } from "./base-repository";
 import { eq } from "drizzle-orm";
-import { TUserWithPasswordHash } from "@/model/types";
+import { TUserWithPasswordHash } from "@/types/common";
 
 export class AuthRepository extends BaseRepository {
   // Запрос для поиска пользователя по email

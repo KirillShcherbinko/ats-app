@@ -3,7 +3,6 @@ import * as grpc from "@grpc/grpc-js";
 import { ServerStatusResponse } from "@grpc/grpc-js/build/src/server-call";
 import { NotFoundError } from "@/error/not-found";
 import { AlreadyExistsError } from "@/error/already-exists";
-import { AppError } from "@/error/base";
 
 export const handleError = (
   error: unknown

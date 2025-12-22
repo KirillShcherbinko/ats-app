@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { roles, users } from "@/db/schema";
-import { ERole, TNewUser, TRole, TUserWithRoleData } from "@/model/types";
+import { ERole, TUserWithRoleData } from "@/types/common";
+import { TNewUser, TRole } from "@/types/db";
 import { eq, sql } from "drizzle-orm";
 
 ////////// Базовый репозиторий для работы с пользователями //////////
@@ -14,6 +15,15 @@ export class BaseRepository {
       .from(roles)
       .where(eq(roles.title, roleName));
     return role;
+  }
+
+  // Получение роли по id
+  public async getRoleById(roleId: string): Promise<ERole> {
+    const [role] = await this._db
+      .select({ title: roles.title })
+      .from(roles)
+      .where(eq(roles.id, roleId));
+    return role.title;
   }
 
   // Проверка на сущестование пользователя с email

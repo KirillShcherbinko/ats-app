@@ -9,7 +9,7 @@ import {
   MIN_PAGE,
   MIN_PASSWORD_LENGTH,
 } from "./consts";
-import { ERole } from "./types";
+import { ERole } from "@/types/common";
 
 export const loginSchema = z.object({
   email: z.email("Invalid email format"),

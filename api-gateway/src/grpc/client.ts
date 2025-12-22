@@ -63,8 +63,8 @@ class GrpcClient {
     return this.promisify<any>(this.client.Refresh, { refresh_token: refreshToken });
   }
 
-  async validateToken(token: string, secret: string) {
-    return this.promisify<any>(this.client.ValidateToken, { token, secret });
+  async validateToken(token: string) {
+    return this.promisify<any>(this.client.ValidateToken, { token });
   }
 
   // User methods

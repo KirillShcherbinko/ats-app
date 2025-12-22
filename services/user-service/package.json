@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "ts-node -r tsconfig-paths/register src/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit push"
+    "db:migrate": "drizzle-kit push",
+    "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --longs=Number --enums=String --defaults=true --arrays=true --objects=true --oneofs=true --outDir=src/types proto/user.proto"
   },
   "keywords": [],
   "author": "",

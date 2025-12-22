@@ -1,16 +1,17 @@
 import { TokenRepository } from "./../repository/token-repository";
 import jwt from "jsonwebtoken";
-import {
-  TGenerateTokensResponse,
-  TJWTPayload,
-  TToken,
-  TValidateTokenResponse,
-} from "@/model/types";
+
 import {
   ACCESS_TOKEN_EXPIRATION,
   REFRESH_TOKEN_EXPIRATION,
 } from "@/model/consts";
 import { BadRequestError } from "@/error/bad-request";
+import { TJWTPayload } from "@/types/common";
+import { TToken } from "@/types/db";
+import {
+  TGenerateTokensResponse,
+  TValidateTokenResponse,
+} from "@/types/responses";
 
 ////////// Сервис для работы с токенами //////////
 export class TokenService {

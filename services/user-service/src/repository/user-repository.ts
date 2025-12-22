@@ -1,7 +1,7 @@
 import { roles, users } from "@/db/schema";
 import { and, count, desc, eq, like, or, sql, SQL } from "drizzle-orm";
 import { BaseRepository } from "./base-repository";
-import { TUserWithRoleData } from "@/model/types";
+import { TUserWithRoleData } from "@/types/common";
 
 ////////// Репозиторий для запросов для сотрудников //////////
 export class UserRepository extends BaseRepository {

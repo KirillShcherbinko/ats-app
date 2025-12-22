@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { grpcClient } from "../grpc-client";
+import { grpcClient } from "../grpc/client";
 
 export interface AuthRequest extends Request {
   user?: {

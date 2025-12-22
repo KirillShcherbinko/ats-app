@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { grpcClient } from '../grpc-client';
+import { grpcClient } from '../grpc/client';
 
 const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken';
 

@@ -8,19 +8,44 @@ import { generatePassword } from "@/utils/password-generator";
 import { UserRepository } from "@/repository/user-repository";
 import { AlreadyExistsError } from "@/error/already-exists";
 import { NotFoundError } from "@/error/not-found";
-import {
-  ERole,
-  TCreateUserResponse,
-  TDeleteUserResponse,
-  TGetUserResponse,
-  TGetUsersResponse,
-  TUpdateUserResponse,
-} from "@/model/types";
 import { DEFAULT_PASSWORD_LENGTH, HASH_LEVEL } from "@/model/consts";
+import { TUserWithRoleData, TUserData, ERole } from "@/types/common";
+import { TUser, TNewUser } from "@/types/db";
+import {
+  TGetUsersResponse,
+  TGetUserResponse,
+  TCreateUserResponse,
+  TUpdateUserResponse,
+  TDeleteUserResponse,
+} from "@/types/responses";
 
 ////////// Сервис для работы с сотрудниками //////////
 export class UserService {
   private userRepository = new UserRepository();
+
+  // Возврат данных
+  private async returnUserData(
+    user: TUserWithRoleData | TUser | TNewUser
+  ): Promise<TUserData> {
+    if (!user.id || !user.createdAt || !user.updatedAt) {
+      throw new Error("Invalid Server Response");
+    }
+
+    const roleName: ERole = !("role" in user)
+      ? await this.userRepository.getRoleById(user.roleId)
+      : user.role.title;
+
+    return {
+      id: user.id,
+      role: roleName,
+      fullName: `${user.lastName} ${user.firstName} ${
+        user.patronymic || ""
+      }`.trim(),
+      email: user.email,
+      createdAt: user.createdAt.getTime(),
+      updatedAt: user.updatedAt.getTime(),
+    };
+  }
 
   // Получение всех сотрудника администратора
   public async getUsers(
@@ -40,16 +65,9 @@ export class UserService {
     const total = await this.userRepository.countRecords();
 
     return {
-      users: userList.map((user) => ({
-        id: user.id,
-        role: user.role.title,
-        fullName: `${user.lastName} ${user.firstName} ${
-          user.patronymic || ""
-        }`.trim(),
-        email: user.email,
-        createdAt: Math.floor(user.createdAt.getTime() / 1000),
-        updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
-      })),
+      users: await Promise.all(
+        userList.map((user) => this.returnUserData(user))
+      ),
       pageData: {
         page,
         limit,
@@ -67,16 +85,7 @@ export class UserService {
       throw new NotFoundError(`User with id ${id} not found`);
     }
 
-    return {
-      id: user.id,
-      role: user.role.title,
-      fullName: `${user.lastName} ${user.firstName} ${
-        user.patronymic || ""
-      }`.trim(),
-      email: user.email,
-      createdAt: Math.floor(user.createdAt.getTime() / 1000),
-      updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
-    };
+    return await this.returnUserData(user);
   }
 
   // Создание пользователя
@@ -101,7 +110,7 @@ export class UserService {
 
     const role = await this.userRepository.getRole(roleName);
 
-    return await this.userRepository.create(
+    const user = await this.userRepository.create(
       administratorId,
       role.id,
       email,
@@ -110,6 +119,8 @@ export class UserService {
       firstName,
       patronymic
     );
+
+    return await this.returnUserData(user);
   }
 
   public async updateUser(
@@ -127,13 +138,15 @@ export class UserService {
       throw new NotFoundError(`User with id ${id} not found`);
     }
 
-    return await this.userRepository.update(
+    const user = await this.userRepository.update(
       id,
       email,
       lastName,
       firstName,
       patronymic
     );
+
+    return await this.returnUserData(user);
   }
 
   // Удаление пользователя

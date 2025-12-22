@@ -1,214 +1,55 @@
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
 import { AuthService } from "../services/auth-service";
 import { UserService } from "../services/user-service";
 import { TokenService } from "../services/token-service";
+import { Login } from "./login";
+import { Register } from "./register";
+import { Logout } from "./logout";
+import { Refresh } from "./refresh";
+import { ValidateToken } from "./validate-token";
+import { GetUsers } from "./get-users";
+import { GetUser } from "./get-user";
+import { CreateUser } from "./create-user";
+import { UpdateUser } from "./update-user";
+import { DeleteUser } from "./delete-user";
 import {
-  TCreateUserRequest,
-  TCreateUserResponse,
-  TDeleteUserRequest,
-  TDeleteUserResponse,
-  TGetUserRequest,
-  TGetUserResponse,
-  TGetUsersRequest,
-  TGetUsersResponse,
-  TLoginRequest,
-  TLoginResponse,
-  TLogoutRequest,
-  TLogoutResponse,
-  TRefreshRequest,
-  TRefreshResponse,
-  TRegisterRequest,
-  TRegisterResponse,
-  TUpdateUserRequest,
-  TUpdateUserResponse,
-  TValidateTokenRequest,
-  TValidateTokenResponse,
-} from "../model/types";
-import { handleError } from "../utils/handle-error";
-import { ROLE_MAP } from "../config/role-map";
+  loadPackageDefinition,
+  Server,
+  ServerCredentials,
+} from "@grpc/grpc-js";
+import { loadSync } from "@grpc/proto-loader";
 
 const PROTO_PATH = path.join(__dirname, "../proto/user.proto");
 
-const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  keepCase: true,
+const packageDefinition = loadSync(PROTO_PATH, {
+  keepCase: false,
   longs: String,
   enums: String,
   defaults: true,
   oneofs: true,
 });
 
-const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
+const protoDescriptor = loadPackageDefinition(packageDefinition);
 const userPackage = protoDescriptor.user as any;
 
-const authService = new AuthService();
-const userService = new UserService();
-const tokenService = new TokenService();
+export const authService = new AuthService();
+export const userService = new UserService();
+export const tokenService = new TokenService();
 
 const createGrpcServer = () => {
-  const server = new grpc.Server();
+  const server = new Server();
 
   server.addService(userPackage.UserService.service, {
-    Login: async (
-      call: grpc.ServerUnaryCall<TLoginRequest, TLoginResponse>,
-      callback: grpc.sendUnaryData<TLoginResponse>
-    ) => {
-      try {
-        const result = await authService.login(
-          call.request.email,
-          call.request.password
-        );
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    Register: async (
-      call: grpc.ServerUnaryCall<TRegisterRequest, TRegisterResponse>,
-      callback: grpc.sendUnaryData<TRegisterResponse>
-    ) => {
-      try {
-        const roleName = ROLE_MAP[call.request.roleName];
-        const result = await authService.register(
-          call.request.email,
-          call.request.password,
-          call.request.lastName,
-          call.request.firstName,
-          call.request.patronymic,
-          roleName
-        );
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    Logout: async (
-      call: grpc.ServerUnaryCall<TLogoutRequest, TLogoutResponse>,
-      callback: grpc.sendUnaryData<TLogoutResponse>
-    ) => {
-      try {
-        const result = await authService.logout(call.request.refreshToken);
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    Refresh: async (
-      call: grpc.ServerUnaryCall<TRefreshRequest, TRefreshResponse>,
-      callback: grpc.sendUnaryData<TRefreshResponse>
-    ) => {
-      try {
-        const result = await authService.refresh(call.request.refreshToken);
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    ValidateAccessToken: async (
-      call: grpc.ServerUnaryCall<TValidateTokenRequest, TValidateTokenResponse>,
-      callback: grpc.sendUnaryData<TValidateTokenResponse>
-    ) => {
-      try {
-        const result = tokenService.validateAccessToken(call.request.token);
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    GetUsers: async (
-      call: grpc.ServerUnaryCall<TGetUsersRequest, TGetUsersResponse>,
-      callback: grpc.sendUnaryData<TGetUsersResponse>
-    ) => {
-      try {
-        const result = await userService.getUsers(
-          call.request.id,
-          call.request.limit,
-          call.request.page,
-          call.request.searchQuery
-        );
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    GetUser: async (
-      call: grpc.ServerUnaryCall<TGetUserRequest, TGetUserResponse>,
-      callback: grpc.sendUnaryData<TGetUserResponse>
-    ) => {
-      try {
-        const result = await userService.getUser(call.request.id);
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    CreateUser: async (
-      call: grpc.ServerUnaryCall<TCreateUserRequest, TCreateUserResponse>,
-      callback: grpc.sendUnaryData<TCreateUserResponse>
-    ) => {
-      try {
-        const roleName = ROLE_MAP[call.request.roleName];
-        const result = await userService.createUser(
-          call.request.administratorId,
-          call.request.email,
-          call.request.lastName,
-          call.request.firstName,
-          roleName,
-          call.request.patronymic
-        );
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    UpdateUser: async (
-      call: grpc.ServerUnaryCall<TUpdateUserRequest, TUpdateUserResponse>,
-      callback: grpc.sendUnaryData<TUpdateUserResponse>
-    ) => {
-      try {
-        const result = await userService.updateUser(
-          call.request.id,
-          call.request.email || undefined,
-          call.request.lastName || undefined,
-          call.request.firstName || undefined,
-          call.request.patronymic || undefined
-        );
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
-
-    DeleteUser: async (
-      call: grpc.ServerUnaryCall<TDeleteUserRequest, TDeleteUserResponse>,
-      callback: grpc.sendUnaryData<TDeleteUserResponse>
-    ) => {
-      try {
-        const result = await userService.deleteUser(call.request.id);
-        callback(null, result);
-      } catch (error: unknown) {
-        const errorData = handleError(error);
-        callback(errorData);
-      }
-    },
+    Login,
+    Register,
+    Logout,
+    Refresh,
+    ValidateToken,
+    GetUsers,
+    GetUser,
+    CreateUser,
+    UpdateUser,
+    DeleteUser,
   });
 
   return server;
@@ -220,7 +61,7 @@ export const startGrpcServer = () => {
 
   server.bindAsync(
     `0.0.0.0:${port}`,
-    grpc.ServerCredentials.createInsecure(),
+    ServerCredentials.createInsecure(),
     (error, port) => {
       if (error) {
         console.error("Failed to start gRPC server:", error);

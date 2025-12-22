@@ -6,15 +6,14 @@ import { AlreadyExistsError } from "@/error/already-exists";
 import { HASH_LEVEL, NUMERIC_EXPIRATION } from "@/model/consts";
 import { BadRequestError } from "@/error/bad-request";
 import { NotFoundError } from "@/error/not-found";
+import { TUserWithRoleData, ERole } from "@/types/common";
 import {
-  ERole,
   TAuthReponse,
   TLoginResponse,
+  TRegisterResponse,
   TLogoutResponse,
   TRefreshResponse,
-  TRegisterResponse,
-  TUserWithRoleData,
-} from "@/model/types";
+} from "@/types/responses";
 
 export class AuthService {
   private authRepository = new AuthRepository();
@@ -42,8 +41,8 @@ export class AuthService {
           user.patronymic || ""
         }`.trim(),
         email: user.email,
-        createdAt: Math.floor(user.createdAt.getTime() / 1000),
-        updatedAt: Math.floor(user.updatedAt.getTime() / 1000),
+        createdAt: user.createdAt.getTime(),
+        updatedAt: user.updatedAt.getTime(),
       },
     };
   }
