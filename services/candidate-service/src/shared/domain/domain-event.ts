@@ -1,13 +1,15 @@
-export type TEventPayload = Record<string, unknown>;
-
-export abstract class DomainEvent {
+export abstract class DomainEvent<TPayload extends Object> {
   public readonly eventId: string;
   public readonly aggregateId: string;
   public readonly eventName: string;
-  public readonly payload: TEventPayload;
+  public readonly payload: TPayload;
   public readonly occurredAt: Date;
 
-  constructor(eventName: string, aggregateId: string, payload: TEventPayload) {
+  protected constructor(
+    eventName: string,
+    aggregateId: string,
+    payload: TPayload
+  ) {
     this.eventId = crypto.randomUUID();
     this.eventName = eventName;
     this.aggregateId = aggregateId;
@@ -21,7 +23,7 @@ export abstract class DomainEvent {
       eventName: this.eventName,
       aggregateId: this.aggregateId,
       payload: this.payload,
-      occurredAt: this.occurredAt.toISOString()
+      occurredAt: this.occurredAt.toISOString(),
     });
   }
 }
