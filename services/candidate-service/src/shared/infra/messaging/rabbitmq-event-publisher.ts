@@ -32,7 +32,7 @@ export class RabbitMQEventPublisher implements IEventPublisher {
     );
   }
 
-  async publish(event: DomainEvent): Promise<void> {
+  async publish(event: DomainEvent<any>): Promise<void> {
     if (!this.channel) {
       throw new Error(
         "RabbitMQEventPublisher not initialized. Call initialize() first."
@@ -68,7 +68,7 @@ export class RabbitMQEventPublisher implements IEventPublisher {
     console.log(`📤 Event published: ${event.eventName} → ${routingKey}`);
   }
 
-  async publishAll(events: DomainEvent[]): Promise<void> {
+  async publishAll(events: readonly DomainEvent<any>[]): Promise<void> {
     for (const event of events) {
       await this.publish(event);
     }

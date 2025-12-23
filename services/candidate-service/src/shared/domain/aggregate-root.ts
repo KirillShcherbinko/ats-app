@@ -1,15 +1,17 @@
-// src/shared/domain/aggregate-root.ts
-import { Entity } from './entity';
-import { DomainEvent } from './domain-event';
+import { DomainEvent } from "./domain-event";
+import { Entity } from "./entity";
 
-export abstract class AggregateRoot<T> extends Entity<T> {
-  private _domainEvents: DomainEvent[] = [];
+export abstract class AggregateRoot<
+  TProps,
+  TEvent extends DomainEvent<any> = DomainEvent<any>
+> extends Entity<TProps> {
+  private _domainEvents: TEvent[] = [];
 
-  protected addDomainEvent(event: DomainEvent): void {
+  protected addDomainEvent(event: TEvent): void {
     this._domainEvents.push(event);
   }
 
-  get domainEvents(): ReadonlyArray<DomainEvent> {
+  get domainEvents(): ReadonlyArray<TEvent> {
     return [...this._domainEvents];
   }
 
@@ -17,7 +19,7 @@ export abstract class AggregateRoot<T> extends Entity<T> {
     this._domainEvents = [];
   }
 
-  protected apply(event: DomainEvent): void {
+  protected apply(event: TEvent): void {
     this.addDomainEvent(event);
   }
 }

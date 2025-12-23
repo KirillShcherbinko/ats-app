@@ -13,19 +13,6 @@ export interface ICandidateStatusChangedEventPayload {
   reason?: string;
 }
 
-export interface ICandidateNoteAddedEventPayload {
-  candidateId: string;
-  noteId: string;
-  authorId: string;
-  content: string;
-}
-
-export interface ICandidateDocumentAddedEventPayload {
-  candidateId: string;
-  documentId: string;
-  fileUrl: string;
-}
-
 export interface ICandidateInfoUpdatedEventPayload {
   candidateId: string;
   firstName?: string;
@@ -34,4 +21,9 @@ export interface ICandidateInfoUpdatedEventPayload {
   email?: string;
   phone?: string;
   description?: string;
+}
+
+export interface ICandidateDeletedEventPayload {
+  candidateId: string;
+  reason?: string;
 }
