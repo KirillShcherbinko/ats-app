@@ -34,17 +34,17 @@ export const userController = {
 
   createUser: async (req: Request, res: Response) => {
     try {
-      const { last_name, first_name, patronymic, email } = req.body;
+      const { lastName, firstName, patronymic, email } = req.body;
 
-      if (!last_name || !first_name || !email) {
+      if (!lastName || !firstName || !email) {
         return res.status(400).json({
           error: "Required fields are missing",
         });
       }
 
       const response = await grpcClient.createUser({
-        last_name,
-        first_name,
+        lastName,
+        firstName,
         patronymic,
         email,
       });
